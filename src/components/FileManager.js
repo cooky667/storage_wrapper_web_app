@@ -115,7 +115,7 @@ const FileManager = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/api/files`,
         formData,
         {
@@ -125,10 +125,35 @@ const FileManager = () => {
           },
         }
       );
-      
+
+      const startedFilename = response?.data?.filename || selectedFile.name;
       setSelectedFile(null);
-      fetchFiles(token);
       setError(null);
+
+      // Poll for existence until blob appears, then refresh list
+      const pollIntervalMs = 3000;
+      const maxAttempts = 100; // ~5 minutes
+      let attempts = 0;
+      const intervalId = setInterval(async () => {
+        attempts += 1;
+        try {
+          const existsResp = await axios.get(`${API_URL}/api/files/exists/${encodeURIComponent(startedFilename)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (existsResp?.data?.exists) {
+            clearInterval(intervalId);
+            fetchFiles(token);
+          } else if (attempts >= maxAttempts) {
+            clearInterval(intervalId);
+            console.warn('Polling timed out for', startedFilename);
+          }
+        } catch (e) {
+          console.warn('Exists check failed:', e?.message || e);
+          if (attempts >= maxAttempts) {
+            clearInterval(intervalId);
+          }
+        }
+      }, pollIntervalMs);
     } catch (error) {
       console.error('Upload error:', error);
       setError('Failed to upload file.');
