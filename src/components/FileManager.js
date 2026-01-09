@@ -102,6 +102,57 @@ const FileManager = () => {
     initializeComponent();
   }, [accounts, instance, fetchFiles, getAccessToken]);
 
+  // Chunked upload for large files (>100MB)
+  const handleChunkedUpload = async (file, token) => {
+    const CHUNK_SIZE = 100 * 1024 * 1024; // 100 MB chunks
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    
+    console.log(`Uploading ${file.name} in ${totalChunks} chunks`);
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+
+      const formData = new FormData();
+      formData.append('file', chunk);
+      formData.append('filename', file.name);
+      formData.append('chunkIndex', chunkIndex);
+      formData.append('totalChunks', totalChunks);
+
+      console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}`);
+
+      await axios.post(
+        `${API_URL}/api/files/chunked`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+    }
+
+    // Commit all chunks
+    console.log('Committing chunks...');
+    await axios.post(
+      `${API_URL}/api/files/chunked/commit`,
+      {
+        filename: file.name,
+        totalChunks,
+        contentType: file.type || 'application/octet-stream',
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log('Upload completed');
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) {
       setError('Please select a file.');
@@ -112,6 +163,17 @@ const FileManager = () => {
       setLoading(true);
       const token = await getAccessToken();
 
+      // Use chunked upload for files > 100MB
+      const USE_CHUNKED_THRESHOLD = 100 * 1024 * 1024; // 100 MB
+      if (selectedFile.size > USE_CHUNKED_THRESHOLD) {
+        await handleChunkedUpload(selectedFile, token);
+        setSelectedFile(null);
+        setError(null);
+        fetchFiles(token);
+        return;
+      }
+
+      // Standard upload for smaller files
       const formData = new FormData();
       formData.append('file', selectedFile);
 
