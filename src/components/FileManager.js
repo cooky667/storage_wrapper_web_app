@@ -121,7 +121,7 @@ const FileManager = () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
+            // Do NOT set Content-Type for FormData; browser adds boundary automatically
           },
         }
       );
