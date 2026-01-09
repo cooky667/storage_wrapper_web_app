@@ -104,7 +104,7 @@ const FileManager = () => {
 
   // Chunked upload for large files (>100MB)
   const handleChunkedUpload = async (file, token) => {
-    const CHUNK_SIZE = 100 * 1024 * 1024; // 100 MB chunks
+    const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB chunks (smaller = faster requests, no timeout)
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
     
     console.log(`Uploading ${file.name} in ${totalChunks} chunks`);
@@ -166,8 +166,8 @@ const FileManager = () => {
       setLoading(true);
       const token = await getAccessToken();
 
-      // Use chunked upload for files > 100MB
-      const USE_CHUNKED_THRESHOLD = 100 * 1024 * 1024; // 100 MB
+      // Use chunked upload for files > 50MB (more reliable with smaller chunks)
+      const USE_CHUNKED_THRESHOLD = 50 * 1024 * 1024; // 50 MB
       if (selectedFile.size > USE_CHUNKED_THRESHOLD) {
         await handleChunkedUpload(selectedFile, token);
         setSelectedFile(null);
