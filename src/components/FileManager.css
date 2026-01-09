@@ -1,0 +1,122 @@
+.file-manager {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.roles-info {
+  background: #f5f5f5;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.roles-info h3 {
+  margin-top: 0;
+}
+
+.roles-info ul {
+  list-style: none;
+  padding: 0;
+}
+
+.roles-info li {
+  padding: 5px 0;
+}
+
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.upload-section {
+  background: #e7f3ff;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.upload-section h3 {
+  margin-top: 0;
+}
+
+.upload-section input {
+  padding: 8px;
+  margin-right: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.upload-section button {
+  padding: 8px 16px;
+  background: #0078d4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.upload-section button:hover:not(:disabled) {
+  background: #005a9e;
+}
+
+.upload-section button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.files-section h3 {
+  margin-top: 0;
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+}
+
+.file-item {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.file-item span {
+  flex: 1;
+}
+
+.file-size {
+  color: #666;
+  margin: 0 10px;
+}
+
+.file-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.file-actions button {
+  padding: 6px 12px;
+  background: #0078d4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.file-actions button:hover:not(:disabled) {
+  background: #005a9e;
+}
+
+.file-actions button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
