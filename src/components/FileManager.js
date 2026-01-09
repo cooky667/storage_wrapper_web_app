@@ -116,14 +116,17 @@ const FileManager = () => {
 
       const formData = new FormData();
       formData.append('file', chunk);
-      formData.append('filename', file.name);
-      formData.append('chunkIndex', chunkIndex);
-      formData.append('totalChunks', totalChunks);
+
+      const params = new URLSearchParams({
+        filename: file.name,
+        chunkIndex,
+        totalChunks,
+      });
 
       console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}`);
 
       await axios.post(
-        `${API_URL}/api/files/chunked`,
+        `${API_URL}/api/files/chunked?${params.toString()}`,
         formData,
         {
           headers: {
