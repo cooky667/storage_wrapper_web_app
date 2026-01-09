@@ -28,6 +28,10 @@ jobs:
       - uses: actions/checkout@v5
         with:
           submodules: true
+      - name: Debug token length
+        run: echo "token_length=${#TOKEN}" | sed 's/./*/g'
+        env:
+          TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
       - name: Build And Deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
