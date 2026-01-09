@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { loginRequest } from '../msalConfig';
 import axios from 'axios';
@@ -19,7 +19,7 @@ const FileManager = () => {
   const API_URL = process.env.REACT_APP_API_URL;
 
   // Fetch access token
-  const getAccessToken = async () => {
+  const getAccessToken = useCallback(async () => {
     try {
       const response = await instance.acquireTokenSilent({
         scopes: loginRequest.scopes,
@@ -30,7 +30,24 @@ const FileManager = () => {
       console.error('Error acquiring token:', error);
       throw error;
     }
-  };
+  }, [instance, accounts]);
+
+  // Fetch files
+  const fetchFiles = useCallback(async (token) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get(`${API_URL}/api/files`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setFiles(response.data.files || []);
+    } catch (error) {
+      console.error('Error fetching files:', error);
+      setError('Failed to fetch files.');
+    } finally {
+      setLoading(false);
+    }
+  }, [API_URL]);
 
   // Decode token to get user roles
   const decodeToken = (token) => {
@@ -83,23 +100,7 @@ const FileManager = () => {
     };
 
     initializeComponent();
-  }, [accounts, instance]);
-
-  const fetchFiles = async (token) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await axios.get(`${API_URL}/api/files`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setFiles(response.data.files || []);
-    } catch (error) {
-      console.error('Error fetching files:', error);
-      setError('Failed to fetch files.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [accounts, instance, fetchFiles, getAccessToken]);
 
   const handleUpload = async () => {
     if (!selectedFile) {
