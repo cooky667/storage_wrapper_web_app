@@ -112,32 +112,27 @@ const FileManager = () => {
       setLoading(true);
       const token = await getAccessToken();
 
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64Data = reader.result.split(',')[1];
-        try {
-          await axios.post(
-            `${API_URL}/api/files`,
-            {
-              filename: selectedFile.name,
-              data: base64Data,
-            },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          setSelectedFile(null);
-          fetchFiles(token);
-          setError(null);
-        } catch (uploadError) {
-          console.error('Upload error:', uploadError);
-          setError('Failed to upload file.');
-        } finally {
-          setLoading(false);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      await axios.post(
+        `${API_URL}/api/files`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
         }
-      };
-      reader.readAsDataURL(selectedFile);
+      );
+      
+      setSelectedFile(null);
+      fetchFiles(token);
+      setError(null);
     } catch (error) {
-      console.error('Error preparing upload:', error);
-      setError('Failed to prepare upload.');
+      console.error('Upload error:', error);
+      setError('Failed to upload file.');
+    } finally {
       setLoading(false);
     }
   };
