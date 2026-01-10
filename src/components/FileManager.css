@@ -150,18 +150,7 @@
 .upload-controls {
   display: flex;
   gap: 20px;
-  align-items: flex-start;
-}
-
-.upload-controls > div {
-  flex: 1;
-}
-
-.upload-controls input {
-  padding: 8px;
-  margin-right: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  align-items: center;
 }
 
 .upload-section button {
@@ -180,11 +169,6 @@
 .upload-section button:disabled {
   background: #ccc;
   cursor: not-allowed;
-}
-
-.folder-controls {
-  display: flex;
-  gap: 10px;
 }
 
 .btn-create-folder {
@@ -281,7 +265,7 @@
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 20px;
   padding: 10px;
   background: #f9f9f9;
@@ -312,6 +296,12 @@
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.breadcrumb-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
 }
 
 /* Folders Section */

@@ -18,7 +18,6 @@ const FileManager = () => {
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameName, setRenameName] = useState('');
-  const [uploadFolderPath, setUploadFolderPath] = useState('/');
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [moveTarget, setMoveTarget] = useState(null);
   const [moveDestination, setMoveDestination] = useState('');
@@ -63,7 +62,6 @@ const FileManager = () => {
       setCurrentPath(response.data.currentPath || '/');
       setFiles(response.data.files || []);
       setFolders(response.data.folders || []);
-      setUploadFolderPath(response.data.currentPath || '/');
       // Cache tree nodes for the current path
       setTreeCache((prev) => ({
         ...prev,
@@ -168,7 +166,7 @@ const FileManager = () => {
         filename: file.name,
         chunkIndex,
         totalChunks,
-        folder: uploadFolderPath === '/' ? '' : uploadFolderPath,
+        folder: currentPath === '/' ? '' : currentPath,
       });
 
       console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}`);
@@ -195,7 +193,7 @@ const FileManager = () => {
         filename: file.name,
         totalChunks,
         contentType: file.type || 'application/octet-stream',
-        folder: uploadFolderPath === '/' ? '' : uploadFolderPath,
+        folder: currentPath === '/' ? '' : currentPath,
       },
       {
         headers: {
@@ -291,7 +289,7 @@ const FileManager = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const targetFolder = uploadFolderPath === '/' ? '' : uploadFolderPath;
+      const targetFolder = currentPath === '/' ? '' : currentPath;
       const response = await axios.post(
         `${API_URL}/api/files${targetFolder ? `?folder=${encodeURIComponent(targetFolder)}` : ''}`,
         formData,
@@ -599,27 +597,8 @@ const FileManager = () => {
                 onChange={(e) => setSelectedFile(e.target.files[0])}
                 disabled={loading}
               />
-              <div className="upload-target">
-                <label>Target folder:</label>
-                <input
-                  type="text"
-                  value={uploadFolderPath}
-                  onChange={(e) => setUploadFolderPath(e.target.value)}
-                  placeholder="/ or folder/subfolder"
-                  disabled={loading}
-                />
-              </div>
               <button onClick={handleUpload} disabled={loading || !selectedFile}>
                 {loading ? 'Uploading...' : 'Upload'}
-              </button>
-            </div>
-            <div className="folder-controls">
-              <button 
-                onClick={() => setShowCreateFolder(true)} 
-                disabled={loading}
-                className="btn-create-folder"
-              >
-                + New Folder
               </button>
             </div>
           </div>
@@ -687,6 +666,17 @@ const FileManager = () => {
           <span className="breadcrumb-path">
             {currentPath === '/' ? '/' : currentPath}
           </span>
+          {userRoles.isUploader && (
+            <div className="breadcrumb-actions">
+              <button 
+                onClick={() => setShowCreateFolder(true)} 
+                disabled={loading}
+                className="btn-create-folder"
+              >
+                + New Folder
+              </button>
+            </div>
+          )}
         </div>
 
         {loading && <p>Loading...</p>}
