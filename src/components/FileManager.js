@@ -523,7 +523,7 @@ const FileManager = () => {
   };
 
   const handleDeleteFolder = async (folderPath) => {
-    if (!window.confirm(`Delete folder and all contents?`)) return;
+    if (!window.confirm(`Delete empty folder? (Folder must not contain any files)`)) return;
 
     try {
       setLoading(true);
@@ -536,7 +536,8 @@ const FileManager = () => {
       setError(null);
     } catch (error) {
       console.error('Delete folder error:', error);
-      setError('Failed to delete folder.');
+      const msg = error.response?.data?.error || 'Failed to delete folder.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
