@@ -7,10 +7,17 @@ import './FileManager.css';
 const FileManager = () => {
   const { instance, accounts } = useMsal();
   const [files, setFiles] = useState([]);
+  const [folders, setFolders] = useState([]);
+  const [currentPath, setCurrentPath] = useState('/');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(null);
+  const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameName, setRenameName] = useState('');
   const [userRoles, setUserRoles] = useState({
     isReader: false,
     isUploader: false,
@@ -33,15 +40,18 @@ const FileManager = () => {
     }
   }, [instance, accounts]);
 
-  // Fetch files
-  const fetchFiles = useCallback(async (token) => {
+  // Fetch files and folders
+  const fetchFiles = useCallback(async (token, folderPath = '') => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/api/files`, {
+      const query = folderPath && folderPath !== '/' ? `?folder=${encodeURIComponent(folderPath)}` : '';
+      const response = await axios.get(`${API_URL}/api/files${query}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      setCurrentPath(response.data.currentPath || '/');
       setFiles(response.data.files || []);
+      setFolders(response.data.folders || []);
     } catch (error) {
       console.error('Error fetching files:', error);
       setError('Failed to fetch files.');
@@ -267,7 +277,7 @@ const FileManager = () => {
       await axios.delete(`${API_URL}/api/files/${filename}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      fetchFiles(token);
+      fetchFiles(token, currentPath === '/' ? '' : currentPath);
       setError(null);
     } catch (error) {
       console.error('Delete error:', error);
@@ -275,6 +285,104 @@ const FileManager = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) {
+      setError('Folder name cannot be empty.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = await getAccessToken();
+      const folderPath = currentPath === '/' 
+        ? newFolderName 
+        : currentPath + '/' + newFolderName;
+      
+      await axios.post(
+        `${API_URL}/api/folders/create`,
+        { folderPath },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setNewFolderName('');
+      setShowCreateFolder(false);
+      setError(null);
+      fetchFiles(token, currentPath === '/' ? '' : currentPath);
+    } catch (error) {
+      console.error('Create folder error:', error);
+      setError('Failed to create folder.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNavigateFolder = async (folderPath) => {
+    try {
+      const token = await getAccessToken();
+      fetchFiles(token, folderPath);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setError('Failed to navigate folder.');
+    }
+  };
+
+  const handleRenameItem = async () => {
+    if (!renameName.trim()) {
+      setError('Name cannot be empty.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = await getAccessToken();
+      await axios.post(
+        `${API_URL}/api/files/rename`,
+        { 
+          oldPath: renameTarget.fullPath || renameTarget.name, 
+          newName: renameName 
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setShowRenameDialog(false);
+      setRenameTarget(null);
+      setRenameName('');
+      setError(null);
+      fetchFiles(token, currentPath === '/' ? '' : currentPath);
+    } catch (error) {
+      console.error('Rename error:', error);
+      setError('Failed to rename item.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteFolder = async (folderPath) => {
+    if (!window.confirm(`Delete folder and all contents?`)) return;
+
+    try {
+      setLoading(true);
+      const token = await getAccessToken();
+      await axios.delete(
+        `${API_URL}/api/folders/${encodeURIComponent(folderPath)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchFiles(token, currentPath === '/' ? '' : currentPath);
+      setError(null);
+    } catch (error) {
+      console.error('Delete folder error:', error);
+      setError('Failed to delete folder.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const navigateUp = async () => {
+    if (currentPath === '/') return;
+    const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
+    await handleNavigateFolder(parentPath === '/' ? '' : parentPath);
   };
 
   return (
@@ -304,40 +412,186 @@ const FileManager = () => {
 
       {userRoles.isUploader && (
         <div className="upload-section">
-          <h3>Upload File</h3>
-          <input
-            type="file"
-            onChange={(e) => setSelectedFile(e.target.files[0])}
-            disabled={loading}
-          />
-          <button onClick={handleUpload} disabled={loading || !selectedFile}>
-            {loading ? 'Uploading...' : 'Upload'}
-          </button>
+          <div className="upload-controls">
+            <div>
+              <h3>Upload File</h3>
+              <input
+                type="file"
+                onChange={(e) => setSelectedFile(e.target.files[0])}
+                disabled={loading}
+              />
+              <button onClick={handleUpload} disabled={loading || !selectedFile}>
+                {loading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+            <div className="folder-controls">
+              <button 
+                onClick={() => setShowCreateFolder(true)} 
+                disabled={loading}
+                className="btn-create-folder"
+              >
+                + New Folder
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateFolder && (
+        <div className="dialog-overlay">
+          <div className="dialog">
+            <h3>Create New Folder</h3>
+            <input
+              type="text"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              placeholder="Folder name"
+              onKeyPress={(e) => e.key === 'Enter' && handleCreateFolder()}
+            />
+            <div className="dialog-actions">
+              <button onClick={handleCreateFolder} disabled={loading || !newFolderName.trim()}>
+                Create
+              </button>
+              <button onClick={() => {
+                setShowCreateFolder(false);
+                setNewFolderName('');
+              }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRenameDialog && (
+        <div className="dialog-overlay">
+          <div className="dialog">
+            <h3>Rename {renameTarget?.type === 'folder' ? 'Folder' : 'File'}</h3>
+            <input
+              type="text"
+              value={renameName}
+              onChange={(e) => setRenameName(e.target.value)}
+              placeholder="New name"
+              onKeyPress={(e) => e.key === 'Enter' && handleRenameItem()}
+            />
+            <div className="dialog-actions">
+              <button onClick={handleRenameItem} disabled={loading || !renameName.trim()}>
+                Rename
+              </button>
+              <button onClick={() => {
+                setShowRenameDialog(false);
+                setRenameTarget(null);
+                setRenameName('');
+              }}>
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       <div className="files-section">
-        <h3>Files</h3>
+        <div className="breadcrumb">
+          <button onClick={navigateUp} disabled={currentPath === '/'} className="breadcrumb-btn">
+            ← Back
+          </button>
+          <span className="breadcrumb-path">
+            {currentPath === '/' ? '/' : currentPath}
+          </span>
+        </div>
+
         {loading && <p>Loading...</p>}
-        {files.length === 0 && !loading && <p>No files yet.</p>}
-        <ul className="file-list">
-          {files.map((file) => (
-            <li key={file.name} className="file-item">
-              <span>{file.name}</span>
-              <span className="file-size">({(file.size / 1024).toFixed(2)} KB)</span>
-              <div className="file-actions">
-                <button onClick={() => handleDownload(file.name)} disabled={loading}>
-                  Download
-                </button>
-                {userRoles.isUploader && (
-                  <button onClick={() => handleDelete(file.name)} disabled={loading}>
-                    Delete
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        
+        {folders.length === 0 && files.length === 0 && !loading && (
+          <p>No folders or files yet.</p>
+        )}
+
+        {folders.length > 0 && (
+          <div className="folders-section">
+            <h3>Folders</h3>
+            <ul className="item-list">
+              {folders.map((folder) => (
+                <li key={folder.path} className="item folder-item">
+                  <div className="item-info" onClick={() => handleNavigateFolder(folder.path)}>
+                    <span className="item-icon">📁</span>
+                    <span className="item-name">{folder.name}</span>
+                    <span className="item-meta">({folder.children} items)</span>
+                  </div>
+                  {userRoles.isUploader && (
+                    <div className="item-actions">
+                      <button 
+                        onClick={() => {
+                          setRenameTarget(folder);
+                          setRenameName(folder.name);
+                          setShowRenameDialog(true);
+                        }}
+                        disabled={loading}
+                        title="Rename"
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteFolder(folder.path)}
+                        disabled={loading}
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {files.length > 0 && (
+          <div className="files-list-section">
+            <h3>Files</h3>
+            <ul className="item-list">
+              {files.map((file) => (
+                <li key={file.fullPath || file.name} className="item file-item">
+                  <div className="item-info">
+                    <span className="item-icon">📄</span>
+                    <span className="item-name">{file.name}</span>
+                    <span className="item-meta">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                  </div>
+                  <div className="item-actions">
+                    <button 
+                      onClick={() => handleDownload(file.fullPath || file.name)} 
+                      disabled={loading}
+                      title="Download"
+                    >
+                      ⬇️
+                    </button>
+                    {userRoles.isUploader && (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setRenameTarget(file);
+                            setRenameName(file.name);
+                            setShowRenameDialog(true);
+                          }}
+                          disabled={loading}
+                          title="Rename"
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(file.fullPath || file.name)}
+                          disabled={loading}
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

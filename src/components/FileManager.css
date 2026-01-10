@@ -80,10 +80,20 @@
 }
 
 .upload-section h3 {
-  margin-top: 0;
+  margin: 0 0 15px 0;
 }
 
-.upload-section input {
+.upload-controls {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.upload-controls > div {
+  flex: 1;
+}
+
+.upload-controls input {
   padding: 8px;
   margin-right: 10px;
   border: 1px solid #ddd;
@@ -108,16 +118,166 @@
   cursor: not-allowed;
 }
 
-.files-section h3 {
-  margin-top: 0;
+.folder-controls {
+  display: flex;
+  gap: 10px;
 }
 
-.file-list {
+.btn-create-folder {
+  padding: 8px 16px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-create-folder:hover:not(:disabled) {
+  background: #218838;
+}
+
+/* Dialogs */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dialog h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.dialog input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.dialog-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dialog-actions button:first-child {
+  background: #0078d4;
+  color: white;
+}
+
+.dialog-actions button:first-child:hover:not(:disabled) {
+  background: #005a9e;
+}
+
+.dialog-actions button:last-child {
+  background: #ccc;
+  color: #333;
+}
+
+.dialog-actions button:last-child:hover {
+  background: #bbb;
+}
+
+.dialog-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Files Section */
+.files-section {
+  margin-top: 30px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.breadcrumb-btn {
+  padding: 6px 12px;
+  background: #0078d4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.breadcrumb-btn:hover:not(:disabled) {
+  background: #005a9e;
+}
+
+.breadcrumb-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.breadcrumb-path {
+  font-weight: bold;
+  color: #333;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Folders Section */
+.folders-section {
+  margin-bottom: 30px;
+}
+
+.folders-section h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+/* Files List Section */
+.files-list-section {
+  margin-top: 30px;
+}
+
+.files-list-section h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+/* Item List */
+.item-list {
   list-style: none;
   padding: 0;
+  margin: 0;
 }
 
-.file-item {
+.item {
   background: #fff;
   border: 1px solid #ddd;
   padding: 15px;
@@ -126,37 +286,74 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 15px;
 }
 
-.file-item span {
+.item:hover {
+  border-color: #0078d4;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.folder-item .item-info {
+  cursor: pointer;
   flex: 1;
-}
-
-.file-size {
-  color: #666;
-  margin: 0 10px;
-}
-
-.file-actions {
   display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #0078d4;
+}
+
+.folder-item .item-info:hover {
+  text-decoration: underline;
+}
+
+.file-item .item-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.file-actions button {
-  padding: 6px 12px;
-  background: #0078d4;
-  color: white;
-  border: none;
+.item-icon {
+  font-size: 20px;
+}
+
+.item-name {
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-meta {
+  color: #666;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.item-actions button {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid #ddd;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
+  transition: all 0.2s;
 }
 
-.file-actions button:hover:not(:disabled) {
-  background: #005a9e;
+.item-actions button:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #0078d4;
 }
 
-.file-actions button:disabled {
-  background: #ccc;
+.item-actions button:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
