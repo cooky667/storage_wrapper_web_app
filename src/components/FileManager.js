@@ -364,6 +364,23 @@ const FileManager = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
+      // Optimistically add virtual folder to UI and tree cache
+      const newFolder = { name: newFolderName, path: folderPath, type: 'folder', children: 0 };
+      setFolders((prev) => {
+        // Avoid duplicates
+        if (prev.find((f) => f.path === folderPath)) return prev;
+        return [...prev, newFolder];
+      });
+      setTreeCache((prev) => {
+        const key = currentPath === '/' ? '/' : currentPath;
+        const existing = prev[key]?.folders || [];
+        const already = existing.find((f) => f.path === folderPath);
+        const nextFolders = already ? existing : [...existing, newFolder];
+        return { ...prev, [key]: { folders: nextFolders } };
+      });
+      // Ensure current path expanded so the new folder is visible
+      setExpandedPaths((prev) => new Set([...Array.from(prev), (currentPath === '/' ? '/' : currentPath)]));
+
       setNewFolderName('');
       setShowCreateFolder(false);
       setError(null);
@@ -371,7 +388,7 @@ const FileManager = () => {
       // Show success message about virtual folders
       alert(`Folder "${newFolderName}" created! Note: Folders are virtual in Azure Blob Storage and will appear in the list once you upload files into them.`);
       
-      fetchFiles(token, currentPath === '/' ? '' : currentPath);
+      // Do not rely on fetchFiles for empty virtual folders; UI already updated above
     } catch (error) {
       console.error('Create folder error:', error);
       setError('Failed to create folder.');
