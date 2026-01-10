@@ -18,6 +18,10 @@ const FileManager = () => {
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameName, setRenameName] = useState('');
+  const [uploadFolderPath, setUploadFolderPath] = useState('/');
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [moveTarget, setMoveTarget] = useState(null);
+  const [moveDestination, setMoveDestination] = useState('');
   const [userRoles, setUserRoles] = useState({
     isReader: false,
     isUploader: false,
@@ -52,6 +56,7 @@ const FileManager = () => {
       setCurrentPath(response.data.currentPath || '/');
       setFiles(response.data.files || []);
       setFolders(response.data.folders || []);
+      setUploadFolderPath(response.data.currentPath || '/');
     } catch (error) {
       console.error('Error fetching files:', error);
       setError('Failed to fetch files.');
@@ -133,6 +138,7 @@ const FileManager = () => {
         filename: file.name,
         chunkIndex,
         totalChunks,
+        folder: uploadFolderPath === '/' ? '' : uploadFolderPath,
       });
 
       console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}`);
@@ -159,6 +165,7 @@ const FileManager = () => {
         filename: file.name,
         totalChunks,
         contentType: file.type || 'application/octet-stream',
+        folder: uploadFolderPath === '/' ? '' : uploadFolderPath,
       },
       {
         headers: {
@@ -196,8 +203,9 @@ const FileManager = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
+      const targetFolder = uploadFolderPath === '/' ? '' : uploadFolderPath;
       const response = await axios.post(
-        `${API_URL}/api/files`,
+        `${API_URL}/api/files${targetFolder ? `?folder=${encodeURIComponent(targetFolder)}` : ''}`,
         formData,
         {
           headers: {
@@ -363,6 +371,39 @@ const FileManager = () => {
     }
   };
 
+  const handleMoveFile = async () => {
+    if (!moveDestination.trim()) {
+      setError('Destination folder cannot be empty.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = await getAccessToken();
+      const destPath = normalizePathForClient(moveDestination) + '/' + (moveTarget.name || moveTarget.fullPath.split('/').pop());
+      await axios.post(
+        `${API_URL}/api/files/move`,
+        { sourcePath: moveTarget.fullPath || moveTarget.name, destinationPath: destPath },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setShowMoveDialog(false);
+      setMoveTarget(null);
+      setMoveDestination('');
+      setError(null);
+      fetchFiles(token, currentPath === '/' ? '' : currentPath);
+    } catch (error) {
+      console.error('Move error:', error);
+      setError('Failed to move file.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const normalizePathForClient = (p) => {
+    if (!p) return '';
+    return p.replace(/^\/+/,'').replace(/\/+$/,'');
+  };
+
   const handleDeleteFolder = async (folderPath) => {
     if (!window.confirm(`Delete folder and all contents?`)) return;
 
@@ -424,6 +465,16 @@ const FileManager = () => {
                 onChange={(e) => setSelectedFile(e.target.files[0])}
                 disabled={loading}
               />
+              <div className="upload-target">
+                <label>Target folder:</label>
+                <input
+                  type="text"
+                  value={uploadFolderPath}
+                  onChange={(e) => setUploadFolderPath(e.target.value)}
+                  placeholder="/ or folder/subfolder"
+                  disabled={loading}
+                />
+              </div>
               <button onClick={handleUpload} disabled={loading || !selectedFile}>
                 {loading ? 'Uploading...' : 'Upload'}
               </button>
@@ -581,6 +632,17 @@ const FileManager = () => {
                         >
                           ✏️
                         </button>
+                        <button
+                          onClick={() => {
+                            setMoveTarget(file);
+                            setMoveDestination(currentPath === '/' ? '' : currentPath);
+                            setShowMoveDialog(true);
+                          }}
+                          disabled={loading}
+                          title="Move"
+                        >
+                          📦
+                        </button>
                         <button 
                           onClick={() => handleDelete(file.fullPath || file.name)}
                           disabled={loading}
@@ -596,6 +658,29 @@ const FileManager = () => {
             </ul>
           </div>
         )}
+
+          {showMoveDialog && (
+            <div className="dialog-overlay">
+              <div className="dialog">
+                <h3>Move File</h3>
+                <p>File: {moveTarget?.fullPath || moveTarget?.name}</p>
+                <input
+                  type="text"
+                  value={moveDestination}
+                  onChange={(e) => setMoveDestination(e.target.value)}
+                  placeholder="Destination folder path"
+                />
+                <div className="dialog-actions">
+                  <button onClick={handleMoveFile} disabled={loading || !moveDestination.trim()}>
+                    Move
+                  </button>
+                  <button onClick={() => { setShowMoveDialog(false); setMoveTarget(null); setMoveDestination(''); }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
       </div>
     </div>
   );
