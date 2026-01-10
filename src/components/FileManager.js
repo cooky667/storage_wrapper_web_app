@@ -301,7 +301,7 @@ const FileManager = () => {
         : currentPath + '/' + newFolderName;
       
       await axios.post(
-        `${API_URL}/api/folders/create`,
+        `${API_URL}/api/files/folders/create`,
         { folderPath },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -366,7 +366,7 @@ const FileManager = () => {
       setLoading(true);
       const token = await getAccessToken();
       await axios.delete(
-        `${API_URL}/api/folders/${encodeURIComponent(folderPath)}`,
+        `${API_URL}/api/files/folders/${encodeURIComponent(folderPath)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchFiles(token, currentPath === '/' ? '' : currentPath);
