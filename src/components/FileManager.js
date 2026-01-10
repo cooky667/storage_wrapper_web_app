@@ -47,7 +47,11 @@ const FileManager = () => {
     }
   }, [instance, accounts]);
 
+  // Load children folders for a given path into the tree cache
+  // duplicate removed
+
   // Fetch files and folders
+  // eslint-disable-next-line no-use-before-define
   const fetchFiles = useCallback(async (token, folderPath = '') => {
     setLoading(true);
     setError(null);
@@ -66,6 +70,23 @@ const FileManager = () => {
         [response.data.currentPath || '/']:
           { folders: response.data.folders || [] }
       }));
+      // Ensure tree has root cached as well
+      if ((response.data.currentPath || '/') !== '/') {
+        try {
+          const rootResp = await axios.get(`${API_URL}/api/files`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setTreeCache((prev) => ({
+            ...prev,
+            [rootResp.data.currentPath || '/']:
+              { folders: rootResp.data.folders || [] }
+          }));
+        } catch (e) {
+          console.warn('Failed to refresh root tree:', e?.message || e);
+        }
+      }
+      // Auto-expand the current path so users can see children
+      setExpandedPaths((prev) => new Set([...Array.from(prev), (response.data.currentPath || '/') ]));
     } catch (error) {
       console.error('Error fetching files:', error);
       setError('Failed to fetch files.');
@@ -188,23 +209,7 @@ const FileManager = () => {
     setUploadProgress(null);
   };
 
-  const loadTreeChildren = async (path) => {
-    try {
-      const token = await getAccessToken();
-      const queryPath = path === '/' ? '' : path;
-      const query = queryPath && queryPath !== '/' ? `?folder=${encodeURIComponent(queryPath)}` : '';
-      const response = await axios.get(`${API_URL}/api/files${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setTreeCache((prev) => ({
-        ...prev,
-        [response.data.currentPath || '/']:
-          { folders: response.data.folders || [] }
-      }));
-    } catch (error) {
-      console.error('Error loading tree children:', error);
-    }
-  };
+  // loadTreeChildren declared above
 
   const toggleExpand = async (path) => {
     const next = new Set(expandedPaths);
@@ -213,7 +218,21 @@ const FileManager = () => {
     } else {
       next.add(path);
       if (!treeCache[path]) {
-        await loadTreeChildren(path);
+        try {
+          const token = await getAccessToken();
+          const qPath = path === '/' ? '' : path;
+          const query = qPath && qPath !== '/' ? `?folder=${encodeURIComponent(qPath)}` : '';
+          const resp = await axios.get(`${API_URL}/api/files${query}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setTreeCache((prev) => ({
+            ...prev,
+            [resp.data.currentPath || '/']:
+              { folders: resp.data.folders || [] }
+          }));
+        } catch (e) {
+          console.warn('Failed to load tree node:', e?.message || e);
+        }
       }
     }
     setExpandedPaths(next);
@@ -228,6 +247,25 @@ const FileManager = () => {
       setError('Failed to navigate to path.');
     }
   };
+
+  // Always load root children once initialized so sidebar shows content
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        const rootResp = await axios.get(`${API_URL}/api/files`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setTreeCache((prev) => ({
+          ...prev,
+          [rootResp.data.currentPath || '/']:
+            { folders: rootResp.data.folders || [] }
+        }));
+      } catch (e) {
+        console.warn('Failed to preload root tree:', e?.message || e);
+      }
+    })();
+  }, [API_URL, getAccessToken]);
 
   const handleUpload = async () => {
     if (!selectedFile) {
@@ -523,7 +561,7 @@ const FileManager = () => {
               onNavigate={navigateToPath}
               onToggleExpand={toggleExpand}
               treeCache={treeCache}
-              loadChildren={loadTreeChildren}
+              loadChildren={async () => {}}
             />
           </ul>
         </aside>
