@@ -341,24 +341,33 @@ const FileManager = () => {
   const handleDownload = async (filename) => {
     try {
       setLoading(true);
-      const token = await getAccessToken();
       const path = filename.includes('/')
         ? filename
         : (currentPath === '/' ? filename : `${currentPath}/${filename}`);
-      const encoded = encodeURIComponent(path);
-      const response = await axios.get(`${API_URL}/api/files/${encoded}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob',
-      });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      // Request a short-lived download token, then let the browser stream directly from the API
+      const bearer = await getAccessToken();
+      const tokenResp = await axios.post(
+        `${API_URL}/api/files/download-token`,
+        { path },
+        { headers: { Authorization: `Bearer ${bearer}` } }
+      );
+
+      const downloadToken = tokenResp?.data?.token;
+      if (!downloadToken) {
+        throw new Error('No download token returned');
+      }
+
+      const encodedPath = encodeURIComponent(path);
+      const url = `${API_URL}/api/files/${encodedPath}?dt=${encodeURIComponent(downloadToken)}`;
+
+      // Use an anchor so the browser handles streaming; avoids buffering large files in memory
       const link = document.createElement('a');
       link.href = url;
-      const dlName = path.split('/').pop() || filename;
-      link.setAttribute('download', dlName);
+      link.download = path.split('/').pop() || filename;
       document.body.appendChild(link);
       link.click();
-      link.parentNode.removeChild(link);
+      link.remove();
       setError(null);
     } catch (error) {
       console.error('Download error:', error);
