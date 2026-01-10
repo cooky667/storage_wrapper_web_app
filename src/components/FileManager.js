@@ -436,10 +436,11 @@ const FileManager = () => {
       setShowCreateFolder(false);
       setError(null);
       
-      // Show success message about virtual folders
-      alert(`Folder "${newFolderName}" created! Note: Folders are virtual in Azure Blob Storage and will appear in the list once you upload files into them.`);
+      // Folder persists via .keep marker blob
+      alert(`Folder "${newFolderName}" created successfully!`);
       
-      // Do not rely on fetchFiles for empty virtual folders; UI already updated above
+      // Refresh to show the newly created folder
+      await fetchFiles(currentPath);
     } catch (error) {
       console.error('Create folder error:', error);
       setError('Failed to create folder.');
