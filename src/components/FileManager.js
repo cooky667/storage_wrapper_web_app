@@ -22,6 +22,9 @@ const FileManager = () => {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [moveTarget, setMoveTarget] = useState(null);
   const [moveDestination, setMoveDestination] = useState('');
+  const [treeCache, setTreeCache] = useState({}); // path -> { folders: [] }
+  const [expandedPaths, setExpandedPaths] = useState(new Set(['/']));
+  const [quickPath, setQuickPath] = useState('/');
   const [userRoles, setUserRoles] = useState({
     isReader: false,
     isUploader: false,
@@ -57,6 +60,12 @@ const FileManager = () => {
       setFiles(response.data.files || []);
       setFolders(response.data.folders || []);
       setUploadFolderPath(response.data.currentPath || '/');
+      // Cache tree nodes for the current path
+      setTreeCache((prev) => ({
+        ...prev,
+        [response.data.currentPath || '/']:
+          { folders: response.data.folders || [] }
+      }));
     } catch (error) {
       console.error('Error fetching files:', error);
       setError('Failed to fetch files.');
@@ -177,6 +186,47 @@ const FileManager = () => {
 
     console.log('Upload completed');
     setUploadProgress(null);
+  };
+
+  const loadTreeChildren = async (path) => {
+    try {
+      const token = await getAccessToken();
+      const queryPath = path === '/' ? '' : path;
+      const query = queryPath && queryPath !== '/' ? `?folder=${encodeURIComponent(queryPath)}` : '';
+      const response = await axios.get(`${API_URL}/api/files${query}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTreeCache((prev) => ({
+        ...prev,
+        [response.data.currentPath || '/']:
+          { folders: response.data.folders || [] }
+      }));
+    } catch (error) {
+      console.error('Error loading tree children:', error);
+    }
+  };
+
+  const toggleExpand = async (path) => {
+    const next = new Set(expandedPaths);
+    if (next.has(path)) {
+      next.delete(path);
+    } else {
+      next.add(path);
+      if (!treeCache[path]) {
+        await loadTreeChildren(path);
+      }
+    }
+    setExpandedPaths(next);
+  };
+
+  const navigateToPath = async (path) => {
+    try {
+      const token = await getAccessToken();
+      await fetchFiles(token, path === '/' ? '' : path);
+    } catch (error) {
+      console.error('Navigate path error:', error);
+      setError('Failed to navigate to path.');
+    }
   };
 
   const handleUpload = async () => {
@@ -432,6 +482,35 @@ const FileManager = () => {
 
   return (
     <div className="file-manager">
+      <div className="layout">
+        <aside className="sidebar">
+          <h3>Folder Tree</h3>
+          <div className="quick-path">
+            <input
+              type="text"
+              value={quickPath}
+              onChange={(e) => setQuickPath(e.target.value)}
+              placeholder="Enter folder path"
+            />
+            <button onClick={() => navigateToPath(quickPath)}>Go</button>
+          </div>
+          <ul className="tree">
+            <TreeNode 
+              path="/" 
+              name="/" 
+              expanded={expandedPaths.has('/')} 
+              onToggle={() => toggleExpand('/')} 
+              onSelect={() => navigateToPath('/')} 
+              childrenFolders={treeCache['/']?.folders || []} 
+              expandedPaths={expandedPaths}
+              onNavigate={navigateToPath}
+              onToggleExpand={toggleExpand}
+              treeCache={treeCache}
+              loadChildren={loadTreeChildren}
+            />
+          </ul>
+        </aside>
+        <main className="content">
       <div className="roles-info">
         <h3>Your Access:</h3>
         <ul>
@@ -681,8 +760,46 @@ const FileManager = () => {
               </div>
             </div>
           )}
+        </div>
+        </main>
       </div>
     </div>
+  );
+};
+
+// Tree node component
+const TreeNode = ({ path, name, expanded, onToggle, onSelect, childrenFolders, expandedPaths, onNavigate, onToggleExpand, treeCache, loadChildren }) => {
+  return (
+    <li className="tree-node">
+      <div className="tree-node-header">
+        <button className="toggle-btn" onClick={onToggle}>
+          {expanded ? '▾' : '▸'}
+        </button>
+        <span className="tree-node-name" onClick={onSelect}>{name}</span>
+      </div>
+      {expanded && childrenFolders && childrenFolders.length > 0 && (
+        <ul className="tree-children">
+          {childrenFolders.map((f) => (
+            <TreeNode
+              key={f.path}
+              path={f.path}
+              name={f.name}
+              expanded={expandedPaths.has(f.path)}
+              onToggle={async () => {
+                await onToggleExpand(f.path);
+              }}
+              onSelect={() => onNavigate(f.path)}
+              childrenFolders={(treeCache[f.path] && treeCache[f.path].folders) || []}
+              expandedPaths={expandedPaths}
+              onNavigate={onNavigate}
+              onToggleExpand={onToggleExpand}
+              treeCache={treeCache}
+              loadChildren={loadChildren}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
   );
 };
 
