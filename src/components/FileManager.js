@@ -281,7 +281,7 @@ const FileManager = () => {
         await handleChunkedUpload(selectedFile, token);
         setSelectedFile(null);
         setError(null);
-        fetchFiles(token);
+        fetchFiles(token, currentPath === '/' ? '' : currentPath);
         return;
       }
 
@@ -301,7 +301,8 @@ const FileManager = () => {
         }
       );
 
-      const startedFilename = response?.data?.filename || selectedFile.name;
+      const startedPath = response?.data?.path
+        || (targetFolder ? `${targetFolder}/${selectedFile.name}` : selectedFile.name);
       setSelectedFile(null);
       setError(null);
 
@@ -312,15 +313,15 @@ const FileManager = () => {
       const intervalId = setInterval(async () => {
         attempts += 1;
         try {
-          const existsResp = await axios.get(`${API_URL}/api/files/exists/${encodeURIComponent(startedFilename)}`, {
+          const existsResp = await axios.get(`${API_URL}/api/files/exists/${encodeURIComponent(startedPath)}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (existsResp?.data?.exists) {
             clearInterval(intervalId);
-            fetchFiles(token);
+            fetchFiles(token, currentPath === '/' ? '' : currentPath);
           } else if (attempts >= maxAttempts) {
             clearInterval(intervalId);
-            console.warn('Polling timed out for', startedFilename);
+            console.warn('Polling timed out for', startedPath);
           }
         } catch (e) {
           console.warn('Exists check failed:', e?.message || e);
@@ -341,7 +342,11 @@ const FileManager = () => {
     try {
       setLoading(true);
       const token = await getAccessToken();
-      const response = await axios.get(`${API_URL}/api/files/${filename}`, {
+      const path = filename.includes('/')
+        ? filename
+        : (currentPath === '/' ? filename : `${currentPath}/${filename}`);
+      const encoded = encodeURIComponent(path);
+      const response = await axios.get(`${API_URL}/api/files/${encoded}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob',
       });
@@ -349,7 +354,8 @@ const FileManager = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', filename);
+      const dlName = path.split('/').pop() || filename;
+      link.setAttribute('download', dlName);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
