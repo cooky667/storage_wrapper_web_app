@@ -10,6 +10,7 @@ const FileManager = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const [userRoles, setUserRoles] = useState({
     isReader: false,
     isUploader: false,
@@ -108,6 +109,7 @@ const FileManager = () => {
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
     
     console.log(`Uploading ${file.name} in ${totalChunks} chunks`);
+    setUploadProgress({ current: 0, total: totalChunks, filename: file.name });
 
     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
       const start = chunkIndex * CHUNK_SIZE;
@@ -134,10 +136,13 @@ const FileManager = () => {
           },
         }
       );
+
+      setUploadProgress({ current: chunkIndex + 1, total: totalChunks, filename: file.name });
     }
 
     // Commit all chunks
     console.log('Committing chunks...');
+    setUploadProgress({ current: totalChunks, total: totalChunks, filename: file.name, committing: true });
     await axios.post(
       `${API_URL}/api/files/chunked/commit`,
       {
@@ -154,6 +159,7 @@ const FileManager = () => {
     );
 
     console.log('Upload completed');
+    setUploadProgress(null);
   };
 
   const handleUpload = async () => {
@@ -283,6 +289,18 @@ const FileManager = () => {
       </div>
 
       {error && <div className="error-message">{error}</div>}
+
+      {uploadProgress && (
+        <div className="upload-progress">
+          <p>Uploading {uploadProgress.filename}...</p>
+          <progress value={uploadProgress.current} max={uploadProgress.total}></progress>
+          <span>
+            {uploadProgress.current} / {uploadProgress.total} chunks 
+            ({Math.round(uploadProgress.current / uploadProgress.total * 100)}%)
+          </span>
+          {uploadProgress.committing && <span> - Committing...</span>}
+        </div>
+      )}
 
       {userRoles.isUploader && (
         <div className="upload-section">
