@@ -29,6 +29,8 @@ const FileManager = () => {
     isUploader: false,
     isAdmin: false,
   });
+  const [showAccessInfo, setShowAccessInfo] = useState(false);
+  const [accessInfoFile, setAccessInfoFile] = useState(null);
 
   const API_URL = process.env.REACT_APP_API_URL;
 
@@ -544,6 +546,19 @@ const FileManager = () => {
     }
   };
 
+  const handleShowAccessInfo = (file) => {
+    setAccessInfoFile(file);
+    setShowAccessInfo(true);
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
+  };
+
   const navigateUp = async () => {
     if (currentPath === '/') return;
     const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
@@ -760,6 +775,13 @@ const FileManager = () => {
                     >
                       ⬇️
                     </button>
+                    <button 
+                      onClick={() => handleShowAccessInfo(file)} 
+                      disabled={loading}
+                      title="Show API Access Info"
+                    >
+                      🔗
+                    </button>
                     {userRoles.isUploader && (
                       <>
                         <button 
@@ -819,6 +841,77 @@ const FileManager = () => {
                     Cancel
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* API Access Info Dialog */}
+          {showAccessInfo && accessInfoFile && (
+            <div className="dialog-backdrop" onClick={() => setShowAccessInfo(false)}>
+              <div className="dialog" onClick={(e) => e.stopPropagation()}>
+                <h3>API Access Info: {accessInfoFile.name}</h3>
+                
+                <div style={{ marginBottom: '20px' }}>
+                  <h4>Download URL:</h4>
+                  <code style={{ display: 'block', padding: '10px', background: '#f5f5f5', borderRadius: '4px', wordBreak: 'break-all' }}>
+                    {API_URL}/api/files/{accessInfoFile.fullPath || accessInfoFile.name}
+                  </code>
+                  <button onClick={() => copyToClipboard(`${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}`)}>
+                    Copy URL
+                  </button>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <h4>PowerShell (VM with Managed Identity):</h4>
+                  <pre style={{ padding: '10px', background: '#f5f5f5', borderRadius: '4px', overflow: 'auto', fontSize: '12px' }}>
+{`# Get token using VM's managed identity
+$response = Invoke-RestMethod -Uri 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://f7c08d7c-21c1-4078-ba83-00291a290457' -Headers @{Metadata="true"}
+$token = $response.access_token
+
+# Download file
+$headers = @{ Authorization = "Bearer $token" }
+Invoke-RestMethod -Uri "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" -Headers $headers -OutFile "${accessInfoFile.name}"`}
+                  </pre>
+                  <button onClick={() => copyToClipboard(`# Get token using VM's managed identity\n$response = Invoke-RestMethod -Uri 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://f7c08d7c-21c1-4078-ba83-00291a290457' -Headers @{Metadata="true"}\n$token = $response.access_token\n\n# Download file\n$headers = @{ Authorization = "Bearer $token" }\nInvoke-RestMethod -Uri "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" -Headers $headers -OutFile "${accessInfoFile.name}"`)}>
+                    Copy PowerShell
+                  </button>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <h4>Python (VM with Managed Identity):</h4>
+                  <pre style={{ padding: '10px', background: '#f5f5f5', borderRadius: '4px', overflow: 'auto', fontSize: '12px' }}>
+{`from azure.identity import DefaultAzureCredential
+import requests
+
+# Get token using VM's managed identity
+credential = DefaultAzureCredential()
+token = credential.get_token("api://f7c08d7c-21c1-4078-ba83-00291a290457/.default")
+
+# Download file
+headers = {"Authorization": f"Bearer {token.token}"}
+response = requests.get("${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}", headers=headers)
+
+with open("${accessInfoFile.name}", "wb") as f:
+    f.write(response.content)`}
+                  </pre>
+                  <button onClick={() => copyToClipboard(`from azure.identity import DefaultAzureCredential\nimport requests\n\n# Get token using VM's managed identity\ncredential = DefaultAzureCredential()\ntoken = credential.get_token("api://f7c08d7c-21c1-4078-ba83-00291a290457/.default")\n\n# Download file\nheaders = {"Authorization": f"Bearer {token.token}"}\nresponse = requests.get("${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}", headers=headers)\n\nwith open("${accessInfoFile.name}", "wb") as f:\n    f.write(response.content)`)}>
+                    Copy Python
+                  </button>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <h4>cURL (with bearer token):</h4>
+                  <pre style={{ padding: '10px', background: '#f5f5f5', borderRadius: '4px', overflow: 'auto', fontSize: '12px' }}>
+{`curl -H "Authorization: Bearer YOUR_TOKEN" \\
+  "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" \\
+  -o "${accessInfoFile.name}"`}
+                  </pre>
+                  <button onClick={() => copyToClipboard(`curl -H "Authorization: Bearer YOUR_TOKEN" \\\n  "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" \\\n  -o "${accessInfoFile.name}"`)}>
+                    Copy cURL
+                  </button>
+                </div>
+
+                <button onClick={() => setShowAccessInfo(false)}>Close</button>
               </div>
             </div>
           )}
