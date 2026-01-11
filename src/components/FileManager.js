@@ -854,9 +854,9 @@ const FileManager = () => {
                 <div style={{ marginBottom: '20px' }}>
                   <h4>Download URL:</h4>
                   <code style={{ display: 'block', padding: '10px', background: '#f5f5f5', borderRadius: '4px', wordBreak: 'break-all' }}>
-                    {API_URL}/api/files/{accessInfoFile.fullPath || accessInfoFile.name}
+                    {API_URL}/api/files/{encodeURIComponent(accessInfoFile.fullPath || accessInfoFile.name)}
                   </code>
-                  <button onClick={() => copyToClipboard(`${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}`)}>
+                  <button onClick={() => copyToClipboard(`${API_URL}/api/files/${encodeURIComponent(accessInfoFile.fullPath || accessInfoFile.name)}`)}>
                     Copy URL
                   </button>
                 </div>
@@ -870,9 +870,9 @@ $token = $response.access_token
 
 # Download file
 $headers = @{ Authorization = "Bearer $token" }
-Invoke-RestMethod -Uri "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" -Headers $headers -OutFile "${accessInfoFile.name}"`}
+Invoke-RestMethod -Uri "${API_URL}/api/files/${encodeURIComponent(accessInfoFile.fullPath || accessInfoFile.name)}" -Headers $headers -OutFile "${accessInfoFile.name}"`}
                   </pre>
-                  <button onClick={() => copyToClipboard(`# Get token using VM's managed identity\n$response = Invoke-RestMethod -Uri 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://f7c08d7c-21c1-4078-ba83-00291a290457' -Headers @{Metadata="true"}\n$token = $response.access_token\n\n# Download file\n$headers = @{ Authorization = "Bearer $token" }\nInvoke-RestMethod -Uri "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" -Headers $headers -OutFile "${accessInfoFile.name}"`)}>
+                  <button onClick={() => copyToClipboard(`# Get token using VM's managed identity\n$response = Invoke-RestMethod -Uri 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://f7c08d7c-21c1-4078-ba83-00291a290457' -Headers @{Metadata="true"}\n$token = $response.access_token\n\n# Download file\n$headers = @{ Authorization = "Bearer $token" }\nInvoke-RestMethod -Uri "${API_URL}/api/files/${encodeURIComponent(accessInfoFile.fullPath || accessInfoFile.name)}" -Headers $headers -OutFile "${accessInfoFile.name}"`)}>
                     Copy PowerShell
                   </button>
                 </div>
@@ -883,6 +883,7 @@ Invoke-RestMethod -Uri "${API_URL}/api/files/${accessInfoFile.fullPath || access
                   <pre style={{ padding: '10px', background: '#f5f5f5', borderRadius: '4px', overflow: 'auto', fontSize: '12px' }}>
 {`from azure.identity import DefaultAzureCredential
 import requests
+from urllib.parse import quote
 
 # Get token using VM's managed identity
 credential = DefaultAzureCredential()
@@ -890,14 +891,15 @@ token = credential.get_token("api://f7c08d7c-21c1-4078-ba83-00291a290457/.defaul
 
 # Download file with streaming (memory-efficient for large files)
 headers = {"Authorization": f"Bearer {token.token}"}
-response = requests.get("${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}", headers=headers, stream=True)
+file_path = quote("${accessInfoFile.fullPath || accessInfoFile.name}", safe='')
+response = requests.get(f"${API_URL}/api/files/{file_path}", headers=headers, stream=True)
 
 with open("${accessInfoFile.name}", "wb") as f:
     for chunk in response.iter_content(chunk_size=8192):
         if chunk:
             f.write(chunk)`}
                   </pre>
-                  <button onClick={() => copyToClipboard(`from azure.identity import DefaultAzureCredential\nimport requests\n\n# Get token using VM's managed identity\ncredential = DefaultAzureCredential()\ntoken = credential.get_token("api://f7c08d7c-21c1-4078-ba83-00291a290457/.default")\n\n# Download file with streaming (memory-efficient for large files)\nheaders = {"Authorization": f"Bearer {token.token}"}\nresponse = requests.get("${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}", headers=headers, stream=True)\n\nwith open("${accessInfoFile.name}", "wb") as f:\n    for chunk in response.iter_content(chunk_size=8192):\n        if chunk:\n            f.write(chunk)`)}>
+                  <button onClick={() => copyToClipboard(`from azure.identity import DefaultAzureCredential\nimport requests\nfrom urllib.parse import quote\n\n# Get token using VM's managed identity\ncredential = DefaultAzureCredential()\ntoken = credential.get_token("api://f7c08d7c-21c1-4078-ba83-00291a290457/.default")\n\n# Download file with streaming (memory-efficient for large files)\nheaders = {"Authorization": f"Bearer {token.token}"}\nfile_path = quote("${accessInfoFile.fullPath || accessInfoFile.name}", safe='')\nresponse = requests.get(f"${API_URL}/api/files/{file_path}", headers=headers, stream=True)\n\nwith open("${accessInfoFile.name}", "wb") as f:\n    for chunk in response.iter_content(chunk_size=8192):\n        if chunk:\n            f.write(chunk)`)}>
                     Copy Python
                   </button>
                 </div>
@@ -908,12 +910,13 @@ with open("${accessInfoFile.name}", "wb") as f:
 {`# Get token using VM's managed identity
 TOKEN=$(curl -s 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://f7c08d7c-21c1-4078-ba83-00291a290457' -H Metadata:true | grep -Po '"access_token":"\\K[^"]*')
 
-# Download file
-curl -H "Authorization: Bearer $TOKEN" \\
-  "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" \\
+# Download file (using --data-urlencode for special characters)
+curl -G -H "Authorization: Bearer $TOKEN" \\
+  --data-urlencode "path=${accessInfoFile.fullPath || accessInfoFile.name}" \\
+  "${API_URL}/api/files/" \\
   -o "${accessInfoFile.name}"`}
                   </pre>
-                  <button onClick={() => copyToClipboard(`# Get token using VM's managed identity\nTOKEN=$(curl -s 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://f7c08d7c-21c1-4078-ba83-00291a290457' -H Metadata:true | grep -Po '"access_token":"\\K[^"]*')\n\n# Download file\ncurl -H "Authorization: Bearer $TOKEN" \\\n  "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" \\\n  -o "${accessInfoFile.name}"`)}>
+                  <button onClick={() => copyToClipboard(`# Get token using VM's managed identity\nTOKEN=$(curl -s 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://f7c08d7c-21c1-4078-ba83-00291a290457' -H Metadata:true | grep -Po '"access_token":"\\K[^"]*')\n\n# Download file (URL-encoded path)\ncurl -H "Authorization: Bearer $TOKEN" \\\n  "${API_URL}/api/files/${encodeURIComponent(accessInfoFile.fullPath || accessInfoFile.name)}" \\\n  -o "${accessInfoFile.name}"`)}>
                     Copy cURL
                   </button>
                 </div>
@@ -924,12 +927,12 @@ curl -H "Authorization: Bearer $TOKEN" \\
 {`# Get token using VM's managed identity
 TOKEN=$(az account get-access-token --resource api://f7c08d7c-21c1-4078-ba83-00291a290457 --query accessToken -o tsv)
 
-# Download file
+# Download file (URL-encoded path)
 curl -H "Authorization: Bearer $TOKEN" \\
-  "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" \\
+  "${API_URL}/api/files/${encodeURIComponent(accessInfoFile.fullPath || accessInfoFile.name)}" \\
   -o "${accessInfoFile.name}"`}
                   </pre>
-                  <button onClick={() => copyToClipboard(`# Get token using VM's managed identity\nTOKEN=$(az account get-access-token --resource api://f7c08d7c-21c1-4078-ba83-00291a290457 --query accessToken -o tsv)\n\n# Download file\ncurl -H "Authorization: Bearer $TOKEN" \\\n  "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" \\\n  -o "${accessInfoFile.name}"`)}>
+                  <button onClick={() => copyToClipboard(`# Get token using VM's managed identity\nTOKEN=$(az account get-access-token --resource api://f7c08d7c-21c1-4078-ba83-00291a290457 --query accessToken -o tsv)\n\n# Download file\ncurl -H "Authorization: Bearer $TOKEN" \\\n  "${API_URL}/api/files/${encodeURIComponent(accessInfoFile.fullPath || accessInfoFile.name)}" \\\n  -o "${accessInfoFile.name}"`)}>
                     Copy Azure CLI
                   </button>
                 </div>
