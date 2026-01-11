@@ -900,13 +900,17 @@ with open("${accessInfoFile.name}", "wb") as f:
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
-                  <h4>cURL (with bearer token):</h4>
+                  <h4>cURL (VM with Managed Identity):</h4>
                   <pre style={{ padding: '10px', background: '#f5f5f5', borderRadius: '4px', overflow: 'auto', fontSize: '12px' }}>
-{`curl -H "Authorization: Bearer YOUR_TOKEN" \\
+{`# Get token using VM's managed identity
+TOKEN=$(curl -s 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://f7c08d7c-21c1-4078-ba83-00291a290457' -H Metadata:true | grep -Po '"access_token":"\\K[^"]*')
+
+# Download file
+curl -H "Authorization: Bearer $TOKEN" \\
   "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" \\
   -o "${accessInfoFile.name}"`}
                   </pre>
-                  <button onClick={() => copyToClipboard(`curl -H "Authorization: Bearer YOUR_TOKEN" \\\n  "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" \\\n  -o "${accessInfoFile.name}"`)}>
+                  <button onClick={() => copyToClipboard(`# Get token using VM's managed identity\nTOKEN=$(curl -s 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=api://f7c08d7c-21c1-4078-ba83-00291a290457' -H Metadata:true | grep -Po '"access_token":"\\K[^"]*')\n\n# Download file\ncurl -H "Authorization: Bearer $TOKEN" \\\n  "${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}" \\\n  -o "${accessInfoFile.name}"`)}>
                     Copy cURL
                   </button>
                 </div>
