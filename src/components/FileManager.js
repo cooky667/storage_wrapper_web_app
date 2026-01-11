@@ -879,6 +879,7 @@ Invoke-RestMethod -Uri "${API_URL}/api/files/${accessInfoFile.fullPath || access
 
                 <div style={{ marginBottom: '20px' }}>
                   <h4>Python (VM with Managed Identity):</h4>
+                  <p style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>First, install dependencies: <code>pip install azure-identity requests</code></p>
                   <pre style={{ padding: '10px', background: '#f5f5f5', borderRadius: '4px', overflow: 'auto', fontSize: '12px' }}>
 {`from azure.identity import DefaultAzureCredential
 import requests
