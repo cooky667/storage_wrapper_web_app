@@ -596,6 +596,26 @@ const FileManager = () => {
           </ul>
         </aside>
         <main className="content">
+          {API_URL && (
+            <div className="api-docs-link" style={{ marginBottom: '12px' }}>
+              <a
+                href={`${API_URL}/api-docs`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block',
+                  padding: '8px 12px',
+                  background: '#1f73b7',
+                  color: '#fff',
+                  borderRadius: '4px',
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                }}
+              >
+                View API Docs (Swagger)
+              </a>
+            </div>
+          )}
       <div className="roles-info">
         <h3>Your Access:</h3>
         <ul>
