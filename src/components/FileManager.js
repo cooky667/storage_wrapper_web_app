@@ -888,14 +888,16 @@ import requests
 credential = DefaultAzureCredential()
 token = credential.get_token("api://f7c08d7c-21c1-4078-ba83-00291a290457/.default")
 
-# Download file
+# Download file with streaming (memory-efficient for large files)
 headers = {"Authorization": f"Bearer {token.token}"}
-response = requests.get("${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}", headers=headers)
+response = requests.get("${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}", headers=headers, stream=True)
 
 with open("${accessInfoFile.name}", "wb") as f:
-    f.write(response.content)`}
+    for chunk in response.iter_content(chunk_size=8192):
+        if chunk:
+            f.write(chunk)`}
                   </pre>
-                  <button onClick={() => copyToClipboard(`from azure.identity import DefaultAzureCredential\nimport requests\n\n# Get token using VM's managed identity\ncredential = DefaultAzureCredential()\ntoken = credential.get_token("api://f7c08d7c-21c1-4078-ba83-00291a290457/.default")\n\n# Download file\nheaders = {"Authorization": f"Bearer {token.token}"}\nresponse = requests.get("${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}", headers=headers)\n\nwith open("${accessInfoFile.name}", "wb") as f:\n    f.write(response.content)`)}>
+                  <button onClick={() => copyToClipboard(`from azure.identity import DefaultAzureCredential\nimport requests\n\n# Get token using VM's managed identity\ncredential = DefaultAzureCredential()\ntoken = credential.get_token("api://f7c08d7c-21c1-4078-ba83-00291a290457/.default")\n\n# Download file with streaming (memory-efficient for large files)\nheaders = {"Authorization": f"Bearer {token.token}"}\nresponse = requests.get("${API_URL}/api/files/${accessInfoFile.fullPath || accessInfoFile.name}", headers=headers, stream=True)\n\nwith open("${accessInfoFile.name}", "wb") as f:\n    for chunk in response.iter_content(chunk_size=8192):\n        if chunk:\n            f.write(chunk)`)}>
                     Copy Python
                   </button>
                 </div>
